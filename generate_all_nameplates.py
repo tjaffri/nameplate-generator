@@ -9,6 +9,7 @@ import subprocess
 import json
 import zipfile
 import shutil
+import uuid
 from pathlib import Path
 
 
@@ -181,47 +182,106 @@ translate([0, 0, plate_thickness])
         return r/255.0, g/255.0, b/255.0
 
     def create_3mf(self, base_stl, text_stl, output_3mf, name):
-        """Create a 3MF file with color information using trimesh"""
+        """Create a 3MF file optimized for Bambu Studio with merged geometry and painting"""
         try:
-            # Import trimesh here (it's already installed from earlier)
             import trimesh
+            from stl import mesh as stl_mesh
             import numpy as np
 
-            # Load the STL files as trimesh objects
-            print(f"    Loading STL files...")
-            base_mesh = trimesh.load(base_stl)
-            text_mesh = trimesh.load(text_stl)
+            print(f"    Loading and parsing STL files...")
 
-            # Convert hex colors to RGBA (0-255 range)
-            def hex_to_rgba(hex_color):
-                hex_color = hex_color.lstrip('#')
-                r = int(hex_color[0:2], 16)
-                g = int(hex_color[2:4], 16)
-                b = int(hex_color[4:6], 16)
-                return [r, g, b, 255]
+            # Load and merge meshes using trimesh for better handling
+            base_trimesh = trimesh.load(base_stl)
+            text_trimesh = trimesh.load(text_stl)
 
-            base_color_rgba = hex_to_rgba(self.base_color)
-            text_color_rgba = hex_to_rgba(self.text_color)
+            print(f"    Merging and painting geometry...")
 
-            # Apply colors to the meshes
-            print(f"    Applying colors...")
-            base_mesh.visual.face_colors = base_color_rgba
-            text_mesh.visual.face_colors = text_color_rgba
+            # Merge the meshes into a single mesh
+            combined = trimesh.util.concatenate([base_trimesh, text_trimesh])
 
-            # Combine both meshes into a scene
-            scene = trimesh.Scene()
-            scene.add_geometry(base_mesh, node_name='Base', geom_name='base')
-            scene.add_geometry(text_mesh, node_name='Text', geom_name='text')
+            # Assign face colors based on Z-height
+            # Base faces (z < 2.5) get light blue, text faces (z >= 2.5) get black
+            face_colors = np.zeros((len(combined.faces), 4), dtype=np.uint8)
 
-            # Export as 3MF
-            print(f"    Exporting to 3MF...")
-            scene.export(output_3mf, file_type='3mf')
+            for i, face in enumerate(combined.faces):
+                # Get the vertices of this face
+                vertices = combined.vertices[face]
+                # Check average Z position
+                avg_z = np.mean(vertices[:, 2])
+
+                if avg_z < 2.5:  # Base plate
+                    # Light blue: #87CEEB
+                    face_colors[i] = [135, 206, 235, 255]
+                else:  # Text
+                    # Black: #000000
+                    face_colors[i] = [0, 0, 0, 255]
+
+            # Apply the face colors
+            combined.visual.face_colors = face_colors
+
+            # Create temporary directory for 3MF contents
+            temp_dir = f"temp_3mf_{name.replace(' ', '_')}"
+            os.makedirs(temp_dir, exist_ok=True)
+            os.makedirs(os.path.join(temp_dir, "3D"), exist_ok=True)
+
+            print(f"    Exporting to 3MF format...")
+
+            # Export using trimesh's 3MF exporter
+            # Save to temp directory first
+            temp_3mf = os.path.join(temp_dir, "temp.3mf")
+            combined.export(temp_3mf, file_type='3mf')
+
+            # Extract the temp 3MF to modify it
+            import zipfile as zf
+            with zf.ZipFile(temp_3mf, 'r') as zip_in:
+                zip_in.extractall(temp_dir)
+
+            # Remove the temp file
+            os.remove(temp_3mf)
+
+            # Read and modify the model XML to add Bambu Studio metadata
+            model_file = os.path.join(temp_dir, "3D", "3dmodel.model")
+            with open(model_file, 'r', encoding='utf-8') as f:
+                model_xml = f.read()
+
+            # Add Bambu Studio metadata after the opening model tag
+            model_xml = model_xml.replace(
+                '<model ',
+                '<model xmlns:slic3rpe="http://schemas.slic3r.org/3mf/2017/06" '
+            )
+            model_xml = model_xml.replace(
+                '</model>',
+                f'''    <metadata name="Application">Bambu Studio</metadata>
+    <metadata name="BambuStudio:3mfVersion">1</metadata>
+    <metadata name="Title">{name} Nameplate</metadata>
+</model>'''
+            )
+
+            # Write modified model back
+            with open(model_file, 'w', encoding='utf-8') as f:
+                f.write(model_xml)
+
+            print(f"    Creating final 3MF archive...")
+            # Create final 3MF archive
+            with zipfile.ZipFile(output_3mf, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        if file.endswith('.3mf'):
+                            continue
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, temp_dir)
+                        zipf.write(file_path, arcname)
+
+            # Clean up temp directory
+            shutil.rmtree(temp_dir)
 
             return True
         except Exception as e:
             print(f"  Error creating 3MF: {e}")
             import traceback
             traceback.print_exc()
+            if 'temp_dir' in locals() and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
             return False
 
     def generate_nameplate(self, name):

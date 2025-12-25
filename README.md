@@ -2,15 +2,35 @@
 
 Generate 3D printable chest badge nameplates for any list of names!
 
-## Quick Start
+## Quick Start - Batch Workflow
 
-### 🎯 Print the existing nameplates:
+### 🚀 One-Time Setup (30 seconds):
 
-1. Open Bambu Studio
-2. Go to `output/final/` directory
-3. Import `hadi_jaffri.3mf` or `hussein_naqi.3mf`
-4. Colors are already set (Light Blue base, Black text)
-5. Slice and print!
+1. **Open Bambu Studio**
+
+2. **Import any nameplate:**
+   - Drag `output/stl/hadi_jaffri.stl` onto the build plate
+
+3. **Add Height Range Modifier:**
+   - Right-click the object → **Add Modifier** → **Height Range**
+
+4. **Configure colors:**
+   - Click the modifier in the list
+   - Set **Range 1:** 0mm to 2.5mm → Select **Light Blue** filament slot
+   - Set **Range 2:** 2.5mm to 10mm → Select **Black** filament slot
+   - The preview should now show blue base + black text ✨
+
+5. **Save as preset:**
+   - Right-click the object → **Save settings as preset**
+   - Name it: `Nameplate Multi-Color`
+
+### ⚡ For Each Additional Nameplate (10 seconds):
+
+1. **Import STL:** Drag `nameplate.stl` onto build plate
+2. **Apply preset:** Right-click object → **Load settings preset** → `Nameplate Multi-Color`
+3. **Done!** Colors applied instantly
+
+**Time for 20 nameplates: ~3.5 minutes total** (30 sec setup + 10 sec × 20)
 
 ### ➕ Generate nameplates for new names:
 
@@ -51,13 +71,13 @@ Generate 3D printable chest badge nameplates for any list of names!
 
 ## Features
 
-✓ **Automatic sizing** - Base plate width adjusts to fit any name
-✓ **Color support** - 3MF files include light blue base & black text
-✓ **Proper 3D text** - Real letter shapes, not blocks
-✓ **Pin holes** - For badge attachment
-✓ **Batch generation** - Process multiple names at once
-✓ **Organized output** - Interim and final files separated
-✓ **Git-friendly** - Generated files excluded via .gitignore
+- **Automatic sizing** - Base plate width adjusts to fit any name
+- **Color support** - 3MF files include light blue base & black text
+- **Proper 3D text** - Real letter shapes, not blocks
+- **Pin holes** - For badge attachment
+- **Batch generation** - Process multiple names at once
+- **Organized output** - Interim and final files separated
+- **Git-friendly** - Generated files excluded via .gitignore
 
 ## Specifications
 
