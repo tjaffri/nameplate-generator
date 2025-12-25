@@ -4,33 +4,29 @@ Generate 3D printable chest badge nameplates for any list of names!
 
 ## Quick Start - Batch Workflow
 
-### 🚀 One-Time Setup (30 seconds):
+### 🚀 For Each Nameplate (20 seconds):
 
 1. **Open Bambu Studio**
 
-2. **Import any nameplate:**
-   - Drag `output/stl/hadi_jaffri.stl` onto the build plate
+2. **Import the base plate:**
+   - Drag `output/stl/hadi_jaffri_base.stl` onto the build plate
+   - In the right panel, assign **Light Blue** filament (or your preferred base color)
 
-3. **Add Height Range Modifier:**
-   - Right-click the object → **Add Modifier** → **Height Range**
+3. **Import the text:**
+   - Drag `output/stl/hadi_jaffri_text.stl` onto the build plate
+   - In the right panel, assign **Black** filament (or your preferred text color)
+   - The text should automatically align on top of the base
 
-4. **Configure colors:**
-   - Click the modifier in the list
-   - Set **Range 1:** 0mm to 2.5mm → Select **Light Blue** filament slot
-   - Set **Range 2:** 2.5mm to 10mm → Select **Black** filament slot
-   - The preview should now show blue base + black text ✨
+4. **Verify alignment:**
+   - Both objects should be perfectly aligned at the same X/Y position
+   - The text sits on top of the base (Z = 2.5mm)
+   - Use the preview to verify colors look correct
 
-5. **Save as preset:**
-   - Right-click the object → **Save settings as preset**
-   - Name it: `Nameplate Multi-Color`
+5. **Slice and print!**
+   - Click "Slice Plate"
+   - The printer will automatically change filament at the correct layer
 
-### ⚡ For Each Additional Nameplate (10 seconds):
-
-1. **Import STL:** Drag `nameplate.stl` onto build plate
-2. **Apply preset:** Right-click object → **Load settings preset** → `Nameplate Multi-Color`
-3. **Done!** Colors applied instantly
-
-**Time for 20 nameplates: ~3.5 minutes total** (30 sec setup + 10 sec × 20)
+**Time for 20 nameplates: ~7 minutes total** (20 sec × 20 nameplates)
 
 ### ➕ Generate nameplates for new names:
 
@@ -98,23 +94,9 @@ Generate 3D printable chest badge nameplates for any list of names!
 
 ## Using the Files
 
-### Option 1: 3MF Files (RECOMMENDED) 🎯
+### Option 1: Separate STL Files (RECOMMENDED) 🎯
 
-**Easiest method - Colors already set!**
-
-```bash
-# Files are in output/final/
-output/final/hadi_jaffri.3mf
-output/final/hussein_naqi.3mf
-```
-
-1. Import the .3mf file into Bambu Studio
-2. Colors are pre-assigned (no manual setup needed)
-3. Slice and print!
-
-### Option 2: Separate STL Files
-
-**For manual color assignment or other slicers:**
+**Best method for Bambu Studio:**
 
 ```bash
 # Files are in output/stl/
@@ -122,11 +104,38 @@ output/stl/hadi_jaffri_base.stl      # → Set to LIGHT BLUE
 output/stl/hadi_jaffri_text.stl      # → Set to BLACK
 ```
 
-1. Import both files into your slicer
-2. Manually assign colors
-3. They should align automatically
+1. Import **both files** into Bambu Studio
+2. Assign **Light Blue** to the base part
+3. Assign **Black** to the text part
+4. They will automatically align correctly
+5. Slice and print!
 
-### Option 3: OpenSCAD Source
+### Option 2: Combined STL File
+
+**For single-color prints or manual setup:**
+
+```bash
+# Files are in output/stl/
+output/stl/hadi_jaffri.stl      # Combined base + text
+```
+
+1. Import the combined STL file
+2. Use Bambu Studio's paint tool to color different regions
+3. Or print in a single color
+
+### Option 3: 3MF Files (Experimental)
+
+**May not work in all versions of Bambu Studio:**
+
+```bash
+# Files are in output/final/
+output/final/hadi_jaffri.3mf
+output/final/hussein_naqi.3mf
+```
+
+Note: 3MF color support varies by Bambu Studio version. Use Option 1 if colors don't import correctly.
+
+### Option 4: OpenSCAD Source
 
 **For customization:**
 
@@ -177,8 +186,9 @@ source venv/bin/activate && python generate_all_nameplates.py "John Doe" "Jane S
 - If still issues, decrease `font_size` in `generate_all_nameplates.py`
 
 **Colors not showing in Bambu Studio?**
-- Make sure you're importing `.3mf` files from `output/final/`
-- STL files don't include color info (use Option 2 above)
+- Use separate STL files: import both `*_base.stl` and `*_text.stl` from `output/stl/`
+- Assign colors to each part individually in the right panel
+- The `.3mf` files may not work in all Bambu Studio versions
 
 **OpenSCAD not found?**
 - Install with: `brew install --cask openscad`
