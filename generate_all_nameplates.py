@@ -165,6 +165,153 @@ translate([0, 0, plate_thickness])
             print(f"  Error rendering {scad_file}: {e}")
             return False
 
+    def create_3mf_with_separate_objects(self, base_stl, text_stl, output_3mf, name):
+        """Create 3MF with base and text as separate objects (not merged)"""
+        try:
+            import zipfile
+            import xml.etree.ElementTree as ET
+            from stl import mesh as stl_mesh
+
+            # Load STL files
+            base_mesh = stl_mesh.Mesh.from_file(base_stl)
+            text_mesh = stl_mesh.Mesh.from_file(text_stl)
+
+            # Create 3MF structure
+            temp_dir = os.path.join(self.scad_dir, "temp_3mf")
+            os.makedirs(temp_dir, exist_ok=True)
+            model_dir = os.path.join(temp_dir, "3D")
+            os.makedirs(model_dir, exist_ok=True)
+
+            # Create XML structure
+            model_root = ET.Element('model', {
+                'unit': 'millimeter',
+                'xml:lang': 'en-US',
+                'xmlns': 'http://schemas.microsoft.com/3dmanufacturing/core/2015/02'
+            })
+
+            resources = ET.SubElement(model_root, 'resources')
+            build = ET.SubElement(model_root, 'build')
+
+            # Add base object
+            base_obj = ET.SubElement(resources, 'object', {
+                'id': '1',
+                'type': 'model',
+                'name': f'{name} - Base'
+            })
+            base_mesh_elem = ET.SubElement(base_obj, 'mesh')
+            base_vertices = ET.SubElement(base_mesh_elem, 'vertices')
+            base_triangles = ET.SubElement(base_mesh_elem, 'triangles')
+
+            # Add base vertices and triangles
+            vertex_idx = 0
+            for triangle in base_mesh.vectors:
+                for vertex in triangle:
+                    ET.SubElement(base_vertices, 'vertex', {
+                        'x': str(vertex[0]),
+                        'y': str(vertex[1]),
+                        'z': str(vertex[2])
+                    })
+                ET.SubElement(base_triangles, 'triangle', {
+                    'v1': str(vertex_idx),
+                    'v2': str(vertex_idx + 1),
+                    'v3': str(vertex_idx + 2)
+                })
+                vertex_idx += 3
+
+            # Add text object
+            text_obj = ET.SubElement(resources, 'object', {
+                'id': '2',
+                'type': 'model',
+                'name': f'{name} - Text'
+            })
+            text_mesh_elem = ET.SubElement(text_obj, 'mesh')
+            text_vertices = ET.SubElement(text_mesh_elem, 'vertices')
+            text_triangles = ET.SubElement(text_mesh_elem, 'triangles')
+
+            # Add text vertices and triangles
+            vertex_idx = 0
+            for triangle in text_mesh.vectors:
+                for vertex in triangle:
+                    ET.SubElement(text_vertices, 'vertex', {
+                        'x': str(vertex[0]),
+                        'y': str(vertex[1]),
+                        'z': str(vertex[2])
+                    })
+                ET.SubElement(text_triangles, 'triangle', {
+                    'v1': str(vertex_idx),
+                    'v2': str(vertex_idx + 1),
+                    'v3': str(vertex_idx + 2)
+                })
+                vertex_idx += 3
+
+            # Add both objects to build plate
+            ET.SubElement(build, 'item', {'objectid': '1'})
+            ET.SubElement(build, 'item', {'objectid': '2'})
+
+            # Write model file
+            tree = ET.ElementTree(model_root)
+            ET.indent(tree, space='  ')
+            model_file = os.path.join(model_dir, '3dmodel.model')
+            tree.write(model_file, encoding='UTF-8', xml_declaration=True)
+
+            # Create [Content_Types].xml
+            content_types = ET.Element('Types', {
+                'xmlns': 'http://schemas.openxmlformats.org/package/2006/content-types'
+            })
+            ET.SubElement(content_types, 'Default', {
+                'Extension': 'rels',
+                'ContentType': 'application/vnd.openxmlformats-package.relationships+xml'
+            })
+            ET.SubElement(content_types, 'Default', {
+                'Extension': 'model',
+                'ContentType': 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml'
+            })
+            content_tree = ET.ElementTree(content_types)
+            ET.indent(content_tree, space='  ')
+            content_tree.write(
+                os.path.join(temp_dir, '[Content_Types].xml'),
+                encoding='UTF-8',
+                xml_declaration=True
+            )
+
+            # Create _rels/.rels
+            rels_dir = os.path.join(temp_dir, '_rels')
+            os.makedirs(rels_dir, exist_ok=True)
+            rels = ET.Element('Relationships', {
+                'xmlns': 'http://schemas.openxmlformats.org/package/2006/relationships'
+            })
+            ET.SubElement(rels, 'Relationship', {
+                'Target': '/3D/3dmodel.model',
+                'Id': 'rel0',
+                'Type': 'http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel'
+            })
+            rels_tree = ET.ElementTree(rels)
+            ET.indent(rels_tree, space='  ')
+            rels_tree.write(
+                os.path.join(rels_dir, '.rels'),
+                encoding='UTF-8',
+                xml_declaration=True
+            )
+
+            # Create ZIP (3MF file)
+            with zipfile.ZipFile(output_3mf, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, temp_dir)
+                        zipf.write(file_path, arcname)
+
+            # Clean up
+            import shutil
+            shutil.rmtree(temp_dir)
+
+            return True
+        except Exception as e:
+            print(f"  Warning: Could not create 3MF: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def generate_nameplate(self, name):
         """Generate complete nameplate for a single name"""
         # Clean name for filename
@@ -189,26 +336,32 @@ translate([0, 0, plate_thickness])
         self.generate_scad_base_only(name, scad_base)
         self.generate_scad_text_only(name, scad_text)
 
-        # Render to STL
+        # Render to STL in temp directory
         print(f"  Rendering STL files...")
-        stl_base = os.path.join(self.stl_dir, f"{safe_name}_base.stl")
-        stl_text = os.path.join(self.stl_dir, f"{safe_name}_text.stl")
+        stl_base = os.path.join(self.scad_dir, f"{safe_name}_base.stl")
+        stl_text = os.path.join(self.scad_dir, f"{safe_name}_text.stl")
 
         success_base = self.render_stl(scad_base, stl_base)
         success_text = self.render_stl(scad_text, stl_text)
 
-        # Report result
+        # Create 3MF with separate objects
+        threemf_file = os.path.join(self.stl_dir, f"{safe_name}.3mf")
+        success_3mf = False
         if success_base and success_text:
-            print(f"  ✓ {safe_name}_base.stl + {safe_name}_text.stl")
+            print(f"  Creating 3MF...")
+            success_3mf = self.create_3mf_with_separate_objects(stl_base, stl_text, threemf_file, name)
+
+        # Report result
+        if success_3mf:
+            print(f"  ✓ {safe_name}.3mf (base + text as separate objects)")
         else:
-            print(f"  ✗ Failed to generate files for {safe_name}")
+            print(f"  ✗ Failed to generate 3MF for {safe_name}")
 
         return {
             'name': name,
-            'stl_base': stl_base if success_base else None,
-            'stl_text': stl_text if success_text else None,
+            'threemf': threemf_file if success_3mf else None,
             'width': plate_width,
-            'success': success_base and success_text
+            'success': success_3mf
         }
 
     def generate_batch(self, names):

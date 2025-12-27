@@ -19,38 +19,39 @@ Run the generator:
 source venv/bin/activate && python generate_all_nameplates.py
 ```
 
-This creates TWO files per nameplate in `output/`:
-- `name_base.stl` (base plate - Light Blue)
-- `name_text.stl` (raised text - Black)
+This creates one `.3mf` file per nameplate in `output/`.
+Each file contains TWO separate objects: base (Light Blue) and text (Black).
 
 ### 2. Bulk Import into Bambu Studio
 
 1. **Open Bambu Studio**
 
-2. **Bulk import all BASE files:**
-   - Select ALL `*_base.stl` files from `output/` folder
+2. **Bulk import all nameplates:**
+   - Select ALL `*.3mf` files from `output/` folder
    - Drag them onto the build plate at once
-   - Select all imported objects (Ctrl+A or Cmd+A)
-   - In the right panel, assign **Light Blue** filament to all
+   - Each nameplate appears as TWO objects: "Name - Base" and "Name - Text"
 
-3. **Bulk import all TEXT files:**
-   - Select ALL `*_text.stl` files from `output/` folder
-   - Drag them onto the build plate at once
-   - Select all imported text objects (Ctrl+A or Cmd+A)
-   - In the right panel, assign **Black** filament to all
-   - Text automatically aligns on top of bases
+3. **Assign colors to all bases:**
+   - In the object list, select all "*- Base" objects
+   - (Hold Ctrl/Cmd and click each base, or use Shift-click)
+   - In the right panel, assign **Light Blue** filament
 
-4. **Slice and print!**
-   - All nameplates now have proper colors
-   - Printer will automatically change filament at layer transition
+4. **Assign colors to all text:**
+   - In the object list, select all "*- Text" objects
+   - In the right panel, assign **Black** filament
+
+5. **Slice and print!**
+   - Text is automatically positioned on top of bases
+   - Printer will change filament at layer transition
 
 ---
 
 ## How It Works
 
-- **Base files:** Flat plates 2.5mm thick (Light Blue)
-- **Text files:** Raised letters 1.2mm tall (Black)
-- **Automatic alignment:** Text positions perfectly on base at Z=2.5mm
+- **Each 3MF file:** Contains base + text as separate objects
+- **Base object:** Flat plate 2.5mm thick → Light Blue
+- **Text object:** Raised letters 1.2mm tall → Black
+- **Automatic positioning:** Text sits on top of base at Z=2.5mm
 - **Automatic sizing:** Each nameplate width adjusts to fit the name
 
 ---
@@ -88,9 +89,13 @@ source venv/bin/activate && python generate_all_nameplates.py
 
 ## Troubleshooting
 
-**Text and base not aligning?**
-- They should align automatically - both are positioned at (0,0)
-- If not aligned, select base + text, right-click → **Align** → **Center**
+**Can't see separate objects in Bambu Studio?**
+- Look for two items per nameplate in the object list (right panel)
+- One named "Name - Base" and one named "Name - Text"
+
+**Objects not aligned?**
+- They should be automatically aligned
+- If not, select both → right-click → **Align** → **Center XY**
 
 **OpenSCAD not found?**
 - Install with: `brew install --cask openscad`
