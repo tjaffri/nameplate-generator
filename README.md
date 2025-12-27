@@ -19,53 +19,45 @@ Run the generator:
 source venv/bin/activate && python generate_all_nameplates.py
 ```
 
-Your STL files will be in the `output/` directory.
+This creates TWO files per nameplate in `output/`:
+- `name_base.stl` (base plate - Light Blue)
+- `name_text.stl` (raised text - Black)
 
-### 2. Import into Bambu Studio (One-Time Setup)
+### 2. Bulk Import into Bambu Studio
 
 1. **Open Bambu Studio**
 
-2. **Import one nameplate** to set up the modifier:
-   - Drag `output/hadi_jaffri.stl` onto the build plate
+2. **Bulk import all BASE files:**
+   - Select ALL `*_base.stl` files from `output/` folder
+   - Drag them onto the build plate at once
+   - Select all imported objects (Ctrl+A or Cmd+A)
+   - In the right panel, assign **Light Blue** filament to all
 
-3. **Add Height Range Modifier**:
-   - Right-click the object → **Add Modifier** → **Height Range**
-   - Set **Range 1 (Base):** Start: `0mm` → End: `2.5mm` → Filament: **Light Blue**
-   - Set **Range 2 (Text):** Start: `2.5mm` → End: `10mm` → Filament: **Black**
-   - Check preview - should show blue base + black text
+3. **Bulk import all TEXT files:**
+   - Select ALL `*_text.stl` files from `output/` folder
+   - Drag them onto the build plate at once
+   - Select all imported text objects (Ctrl+A or Cmd+A)
+   - In the right panel, assign **Black** filament to all
+   - Text automatically aligns on top of bases
 
-4. **Save as Preset**:
-   - Right-click the object → **Save settings as preset**
-   - Name it: `Nameplate-MultiColor`
-
-### 3. Bulk Import All Nameplates
-
-1. **Remove the test nameplate** from the build plate
-
-2. **Select and drag ALL STL files** from `output/` folder onto the build plate at once
-
-3. **Select all objects** (Ctrl+A or Cmd+A)
-
-4. **Apply the preset**:
-   - Right-click any selected object → **Load settings preset** → `Nameplate-MultiColor`
-   - All nameplates will instantly get the color settings applied!
-
-5. **Slice and print!**
+4. **Slice and print!**
+   - All nameplates now have proper colors
+   - Printer will automatically change filament at layer transition
 
 ---
 
 ## How It Works
 
-- **Base plate:** 0mm to 2.5mm height (Light Blue)
-- **Raised text:** 2.5mm to top (Black)
-- **Automatic sizing:** Plate width adjusts to fit each name
-- **Height Range Modifier:** Applies different colors at different Z heights
+- **Base files:** Flat plates 2.5mm thick (Light Blue)
+- **Text files:** Raised letters 1.2mm tall (Black)
+- **Automatic alignment:** Text positions perfectly on base at Z=2.5mm
+- **Automatic sizing:** Each nameplate width adjusts to fit the name
 
 ---
 
 ## Specifications
 
-- **Height:** 22mm (fixed)
+- **Height:** 22mm total (2.5mm base + space for text)
 - **Width:** Auto-calculated per name
 - **Base thickness:** 2.5mm
 - **Text height:** 1.2mm raised above base
@@ -96,13 +88,9 @@ source venv/bin/activate && python generate_all_nameplates.py
 
 ## Troubleshooting
 
-**"Height Range" not in the Add Modifier menu?**
-- Update Bambu Studio to the latest version
-- Or use: Right-click → **Add Modifier** → Look for **Height Range** or **Layer Range**
-
-**Text not showing as different color?**
-- Make sure Range 1 ends at exactly `2.5mm` and Range 2 starts at `2.5mm`
-- Check that you've selected different filament slots for each range
+**Text and base not aligning?**
+- They should align automatically - both are positioned at (0,0)
+- If not aligned, select base + text, right-click → **Align** → **Center**
 
 **OpenSCAD not found?**
 - Install with: `brew install --cask openscad`

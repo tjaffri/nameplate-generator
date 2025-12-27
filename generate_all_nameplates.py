@@ -181,27 +181,34 @@ translate([0, 0, plate_thickness])
         print(f"  Plate width: {plate_width}mm")
         print(f"  Plate height: {self.base_height}mm")
 
-        # Generate SCAD file in temp directory
-        print(f"  Generating OpenSCAD file...")
-        scad_file = os.path.join(self.scad_dir, f"{safe_name}.scad")
-        self.generate_scad_file(name, scad_file)
+        # Generate SCAD files in temp directory
+        print(f"  Generating OpenSCAD files...")
+        scad_base = os.path.join(self.scad_dir, f"{safe_name}_base.scad")
+        scad_text = os.path.join(self.scad_dir, f"{safe_name}_text.scad")
+
+        self.generate_scad_base_only(name, scad_base)
+        self.generate_scad_text_only(name, scad_text)
 
         # Render to STL
-        print(f"  Rendering STL...")
-        stl_file = os.path.join(self.stl_dir, f"{safe_name}.stl")
-        success = self.render_stl(scad_file, stl_file)
+        print(f"  Rendering STL files...")
+        stl_base = os.path.join(self.stl_dir, f"{safe_name}_base.stl")
+        stl_text = os.path.join(self.stl_dir, f"{safe_name}_text.stl")
+
+        success_base = self.render_stl(scad_base, stl_base)
+        success_text = self.render_stl(scad_text, stl_text)
 
         # Report result
-        if success:
-            print(f"  ✓ {safe_name}.stl")
+        if success_base and success_text:
+            print(f"  ✓ {safe_name}_base.stl + {safe_name}_text.stl")
         else:
-            print(f"  ✗ Failed to generate {safe_name}.stl")
+            print(f"  ✗ Failed to generate files for {safe_name}")
 
         return {
             'name': name,
-            'stl': stl_file if success else None,
+            'stl_base': stl_base if success_base else None,
+            'stl_text': stl_text if success_text else None,
             'width': plate_width,
-            'success': success
+            'success': success_base and success_text
         }
 
     def generate_batch(self, names):
