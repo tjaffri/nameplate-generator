@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Automated nameplate generator for multiple names
-Generates properly sized nameplates with color support for Bambu Studio
+Generates properly sized nameplates - colors assigned manually in slicer
 """
 
 import os
@@ -25,10 +25,6 @@ class NameplateGenerator:
         self.font_size = 10  # points
         self.min_width = 60  # minimum plate width
         self.margin = 8  # margin on each side of text
-
-        # Colors (for 3MF export)
-        self.base_color = "#87CEEB"  # Light blue (Sky Blue)
-        self.text_color = "#000000"  # Black
 
         # Output directories
         self.output_dir = "output"
@@ -175,113 +171,24 @@ translate([0, 0, plate_thickness])
             print(f"  Error rendering {scad_file}: {e}")
             return False
 
-    def hex_to_rgb(self, hex_color):
-        """Convert hex color to RGB values (0-1 range)"""
-        hex_color = hex_color.lstrip('#')
-        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        return r/255.0, g/255.0, b/255.0
-
     def create_3mf(self, base_stl, text_stl, output_3mf, name):
-        """Create a 3MF file optimized for Bambu Studio with merged geometry and painting"""
+        """Create a simple 3MF file with merged geometry (colors assigned manually in slicer)"""
         try:
             import trimesh
-            from stl import mesh as stl_mesh
-            import numpy as np
 
-            print(f"    Loading and parsing STL files...")
-
-            # Load and merge meshes using trimesh for better handling
+            print(f"    Creating 3MF (experimental)...")
+            # Load and merge both STL files
             base_trimesh = trimesh.load(base_stl)
             text_trimesh = trimesh.load(text_stl)
-
-            print(f"    Merging and painting geometry...")
-
-            # Merge the meshes into a single mesh
             combined = trimesh.util.concatenate([base_trimesh, text_trimesh])
 
-            # Assign face colors based on Z-height
-            # Base faces (z < 2.5) get light blue, text faces (z >= 2.5) get black
-            face_colors = np.zeros((len(combined.faces), 4), dtype=np.uint8)
-
-            for i, face in enumerate(combined.faces):
-                # Get the vertices of this face
-                vertices = combined.vertices[face]
-                # Check average Z position
-                avg_z = np.mean(vertices[:, 2])
-
-                if avg_z < 2.5:  # Base plate
-                    # Light blue: #87CEEB
-                    face_colors[i] = [135, 206, 235, 255]
-                else:  # Text
-                    # Black: #000000
-                    face_colors[i] = [0, 0, 0, 255]
-
-            # Apply the face colors
-            combined.visual.face_colors = face_colors
-
-            # Create temporary directory for 3MF contents
-            temp_dir = f"temp_3mf_{name.replace(' ', '_')}"
-            os.makedirs(temp_dir, exist_ok=True)
-            os.makedirs(os.path.join(temp_dir, "3D"), exist_ok=True)
-
-            print(f"    Exporting to 3MF format...")
-
-            # Export using trimesh's 3MF exporter
-            # Save to temp directory first
-            temp_3mf = os.path.join(temp_dir, "temp.3mf")
-            combined.export(temp_3mf, file_type='3mf')
-
-            # Extract the temp 3MF to modify it
-            import zipfile as zf
-            with zf.ZipFile(temp_3mf, 'r') as zip_in:
-                zip_in.extractall(temp_dir)
-
-            # Remove the temp file
-            os.remove(temp_3mf)
-
-            # Read and modify the model XML to add Bambu Studio metadata
-            model_file = os.path.join(temp_dir, "3D", "3dmodel.model")
-            with open(model_file, 'r', encoding='utf-8') as f:
-                model_xml = f.read()
-
-            # Add Bambu Studio metadata after the opening model tag
-            model_xml = model_xml.replace(
-                '<model ',
-                '<model xmlns:slic3rpe="http://schemas.slic3r.org/3mf/2017/06" '
-            )
-            model_xml = model_xml.replace(
-                '</model>',
-                f'''    <metadata name="Application">Bambu Studio</metadata>
-    <metadata name="BambuStudio:3mfVersion">1</metadata>
-    <metadata name="Title">{name} Nameplate</metadata>
-</model>'''
-            )
-
-            # Write modified model back
-            with open(model_file, 'w', encoding='utf-8') as f:
-                f.write(model_xml)
-
-            print(f"    Creating final 3MF archive...")
-            # Create final 3MF archive
-            with zipfile.ZipFile(output_3mf, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(temp_dir):
-                    for file in files:
-                        if file.endswith('.3mf'):
-                            continue
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            # Clean up temp directory
-            shutil.rmtree(temp_dir)
+            # Export directly to 3MF
+            # Note: Colors not embedded - assign manually in Bambu Studio
+            combined.export(output_3mf, file_type='3mf')
 
             return True
         except Exception as e:
-            print(f"  Error creating 3MF: {e}")
-            import traceback
-            traceback.print_exc()
-            if 'temp_dir' in locals() and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+            print(f"  Warning: Could not create 3MF: {e}")
             return False
 
     def generate_nameplate(self, name):
@@ -320,21 +227,20 @@ translate([0, 0, plate_thickness])
         success_text = self.render_stl(scad_text, stl_text)
         success_combined = self.render_stl(scad_combined, stl_combined)
 
-        # Generate 3MF with colors in final directory
+        # Generate 3MF in final directory (optional/experimental)
         threemf_file = os.path.join(self.final_dir, f"{safe_name}.3mf")
         success_3mf = False
         if success_base and success_text:
-            print(f"  Creating 3MF with colors...")
             success_3mf = self.create_3mf(stl_base, stl_text, threemf_file, name)
 
         # Report results
         if success_base and success_text:
-            print(f"  ✓ STL Base: output/stl/{safe_name}_base.stl")
-            print(f"  ✓ STL Text: output/stl/{safe_name}_text.stl")
+            print(f"  ✓ STL Base: output/stl/{safe_name}_base.stl (assign Light Blue)")
+            print(f"  ✓ STL Text: output/stl/{safe_name}_text.stl (assign Black)")
         if success_combined:
             print(f"  ✓ STL Combined: output/stl/{safe_name}.stl")
         if success_3mf:
-            print(f"  ✓ 3MF (READY TO PRINT): output/final/{safe_name}.3mf")
+            print(f"  ✓ 3MF (experimental): output/final/{safe_name}.3mf")
 
         # Clean up temporary SCAD files (keep only the combined one)
         for f in [scad_base, scad_text]:

@@ -43,7 +43,7 @@ Generate 3D printable chest badge nameplates for any list of names!
    source venv/bin/activate && python generate_all_nameplates.py
    ```
 
-3. Find your 3MF files in `output/final/`
+3. Find your STL files in `output/stl/` (use the `*_base.stl` and `*_text.stl` files)
 
 ## Directory Structure
 
@@ -54,21 +54,20 @@ Generate 3D printable chest badge nameplates for any list of names!
 ├── README.md                     ← This file
 ├── .gitignore                    ← Keeps output/ out of git
 └── output/                       ← Generated files (not in git)
-    ├── final/                    ← 🎯 3MF files - READY TO PRINT
-    │   ├── hadi_jaffri.3mf
-    │   └── hussein_naqi.3mf
-    ├── stl/                      ← Individual STL parts
-    │   ├── *_base.stl
-    │   ├── *_text.stl
-    │   └── *.stl (combined)
-    └── scad/                     ← OpenSCAD source (for customization)
-        └── *.scad
+    ├── stl/                      ← 🎯 STL files - USE THESE
+    │   ├── *_base.stl            ← Assign Light Blue in slicer
+    │   ├── *_text.stl            ← Assign Black in slicer
+    │   └── *.stl                 ← Combined (single color)
+    ├── scad/                     ← OpenSCAD source (for customization)
+    │   └── *.scad
+    └── final/                    ← 3MF files (experimental)
+        └── *.3mf
 ```
 
 ## Features
 
 - **Automatic sizing** - Base plate width adjusts to fit any name
-- **Color support** - 3MF files include light blue base & black text
+- **Multi-color support** - Separate base and text STL files for easy color assignment
 - **Proper 3D text** - Real letter shapes, not blocks
 - **Pin holes** - For badge attachment
 - **Batch generation** - Process multiple names at once
@@ -81,7 +80,7 @@ Generate 3D printable chest badge nameplates for any list of names!
 - **Width:** Auto-calculated per name (e.g., 80mm for "Hadi Jaffri", 90mm for "Hussein Naqi")
 - **Base thickness:** 2.5mm
 - **Text height:** 1.2mm raised above base
-- **Colors:** Light Blue (#87CEEB) base, Black (#000000) text
+- **Colors:** Assign in slicer (suggested: Light Blue base, Black text)
 - **Pin holes:** 1.5mm diameter, 4mm from corners
 
 ## Print Settings (Bambu A1)
@@ -150,7 +149,7 @@ output/scad/hadi_jaffri.scad
 
 ## Customization
 
-Want to change colors, sizes, or fonts? Edit `generate_all_nameplates.py`:
+Want to change sizes or fonts? Edit `generate_all_nameplates.py`:
 
 ```python
 class NameplateGenerator:
@@ -160,9 +159,9 @@ class NameplateGenerator:
         self.text_height = 1.2       # Text raise height
         self.font_size = 10          # Font size
         self.margin = 8              # Space around text
-        self.base_color = "#87CEEB"  # Light blue (change hex code)
-        self.text_color = "#000000"  # Black (change hex code)
 ```
+
+Colors are assigned in Bambu Studio when importing the STL files.
 
 Then regenerate:
 ```bash
