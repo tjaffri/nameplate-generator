@@ -4,29 +4,35 @@ Generate 3D printable chest badge nameplates for any list of names!
 
 ## Quick Start - Batch Workflow
 
-### 🚀 For Each Nameplate (20 seconds):
+### 🚀 One-Time Setup (1 minute):
 
 1. **Open Bambu Studio**
 
-2. **Import the base plate:**
-   - Drag `output/stl/hadi_jaffri_base.stl` onto the build plate
-   - In the right panel, assign **Light Blue** filament (or your preferred base color)
+2. **Import any nameplate:**
+   - Drag `output/stl/hadi_jaffri.stl` (the combined file) onto the build plate
 
-3. **Import the text:**
-   - Drag `output/stl/hadi_jaffri_text.stl` onto the build plate
-   - In the right panel, assign **Black** filament (or your preferred text color)
-   - The text should automatically align on top of the base
+3. **Add filament change at layer height:**
+   - Right-click the object → **Change Filament**
+   - In the dialog, enter layer: **13** (this is 2.5mm ÷ 0.2mm layer height)
+   - Or if using 0.16mm layers, use layer **16**
+   - Click OK
 
-4. **Verify alignment:**
-   - Both objects should be perfectly aligned at the same X/Y position
-   - The text sits on top of the base (Z = 2.5mm)
-   - Use the preview to verify colors look correct
+4. **Assign colors:**
+   - Set **Filament 1** (bottom layers) to **Light Blue**
+   - Set **Filament 2** (top layers) to **Black**
+   - Check the preview - should show blue base, black text
 
-5. **Slice and print!**
-   - Click "Slice Plate"
-   - The printer will automatically change filament at the correct layer
+5. **Save as preset:**
+   - Right-click the object → **Save settings as preset**
+   - Name it: `Nameplate-MultiColor`
 
-**Time for 20 nameplates: ~7 minutes total** (20 sec × 20 nameplates)
+### ⚡ For Each Additional Nameplate (5 seconds):
+
+1. **Bulk import:** Select and drag all `*.stl` files from `output/stl/` onto build plate
+2. **Apply preset:** Select all objects → Right-click → **Load settings preset** → `Nameplate-MultiColor`
+3. **Done!** All nameplates now have colors set
+
+**Time for 20 nameplates: ~2 minutes total** (1 min setup + 5 sec × 20 nameplates, or bulk import all at once)
 
 ### ➕ Generate nameplates for new names:
 
@@ -43,7 +49,7 @@ Generate 3D printable chest badge nameplates for any list of names!
    source venv/bin/activate && python generate_all_nameplates.py
    ```
 
-3. Find your STL files in `output/stl/` (use the `*_base.stl` and `*_text.stl` files)
+3. Find your STL files in `output/stl/` (bulk import the `*.stl` combined files)
 
 ## Directory Structure
 
@@ -55,9 +61,9 @@ Generate 3D printable chest badge nameplates for any list of names!
 ├── .gitignore                    ← Keeps output/ out of git
 └── output/                       ← Generated files (not in git)
     ├── stl/                      ← 🎯 STL files - USE THESE
-    │   ├── *_base.stl            ← Assign Light Blue in slicer
-    │   ├── *_text.stl            ← Assign Black in slicer
-    │   └── *.stl                 ← Combined (single color)
+    │   ├── *.stl                 ← Combined files (bulk import these!)
+    │   ├── *_base.stl            ← Separate base (optional)
+    │   └── *_text.stl            ← Separate text (optional)
     ├── scad/                     ← OpenSCAD source (for customization)
     │   └── *.scad
     └── final/                    ← 3MF files (experimental)
@@ -93,34 +99,34 @@ Generate 3D printable chest badge nameplates for any list of names!
 
 ## Using the Files
 
-### Option 1: Separate STL Files (RECOMMENDED) 🎯
+### Option 1: Combined STL Files (RECOMMENDED) 🎯
 
-**Best method for Bambu Studio:**
-
-```bash
-# Files are in output/stl/
-output/stl/hadi_jaffri_base.stl      # → Set to LIGHT BLUE
-output/stl/hadi_jaffri_text.stl      # → Set to BLACK
-```
-
-1. Import **both files** into Bambu Studio
-2. Assign **Light Blue** to the base part
-3. Assign **Black** to the text part
-4. They will automatically align correctly
-5. Slice and print!
-
-### Option 2: Combined STL File
-
-**For single-color prints or manual setup:**
+**Best for bulk importing multiple nameplates:**
 
 ```bash
 # Files are in output/stl/
-output/stl/hadi_jaffri.stl      # Combined base + text
+output/stl/hadi_jaffri.stl           # Complete nameplate
+output/stl/hussein_naqi.stl          # Complete nameplate
 ```
 
-1. Import the combined STL file
-2. Use Bambu Studio's paint tool to color different regions
-3. Or print in a single color
+1. Import STL file(s) into Bambu Studio
+2. Add **Change Filament** at layer **13** (for 0.2mm layers)
+3. Save as preset and apply to all nameplates
+4. See "Quick Start" above for detailed workflow
+
+### Option 2: Separate STL Files
+
+**For advanced customization:**
+
+```bash
+# Files are in output/stl/
+output/stl/hadi_jaffri_base.stl      # Base plate only
+output/stl/hadi_jaffri_text.stl      # Text only
+```
+
+1. Import both files separately
+2. Assign different colors to each
+3. They will automatically align correctly
 
 ### Option 3: 3MF Files (Experimental)
 
