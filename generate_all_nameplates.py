@@ -228,14 +228,14 @@ translate([0, 0, plate_thickness])
             text_vertices = ET.SubElement(text_mesh_elem, 'vertices')
             text_triangles = ET.SubElement(text_mesh_elem, 'triangles')
 
-            # Add text vertices and triangles (offset Z by base thickness)
+            # Add text vertices and triangles (already positioned at correct Z in STL)
             vertex_idx = 0
             for triangle in text_mesh.vectors:
                 for vertex in triangle:
                     ET.SubElement(text_vertices, 'vertex', {
                         'x': str(vertex[0]),
                         'y': str(vertex[1]),
-                        'z': str(vertex[2] + self.base_thickness)  # Offset text on top of base
+                        'z': str(vertex[2])  # Text STL already has correct Z position from OpenSCAD
                     })
                 ET.SubElement(text_triangles, 'triangle', {
                     'v1': str(vertex_idx),
