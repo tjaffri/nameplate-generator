@@ -41,17 +41,16 @@ Generate 3D printable chest badge nameplates for any list of names!
 2. Slice the plate
 3. For each object, manually add filament change at layer 13
 
-**Option C - Using Paint Tool (fastest for bulk):**
-1. Import all nameplates at once
-2. Select all objects
-3. Click **Paint** tool in the left toolbar
-4. Set **Smart fill angle threshold** to 60 degrees
-5. Click **Fill** → Click on the top text surface of any nameplate
-6. Select **Black** filament → It should auto-detect all text surfaces
-7. Base surfaces will use the default Light Blue filament
-8. Slice and print!
+**Option C - Using Paint Tool:**
+1. Import all nameplates at once (assign all to Light Blue by default)
+2. Click **Paint** tool in the left toolbar
+3. Select **Black** filament in the paint tool
+4. Click on the text surfaces to paint them black
+5. Use **Smart Fill** or **Bucket Fill** if available to paint all connected text surfaces
+6. Repeat for each nameplate
+7. Slice and print!
 
-**Note:** The Paint tool is fastest for bulk processing if it correctly detects text vs base surfaces.
+**Note:** The Paint tool requires manually painting each nameplate but can be faster than the layer slider method.
 
 ### ➕ Generate nameplates for new names:
 
