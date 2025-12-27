@@ -1,64 +1,43 @@
 # Automated Nameplate Generator
 
-Generate 3D printable chest badge nameplates for any list of names!
+Generate 3D printable chest badge nameplates with automatic color assignments for Bambu Studio!
 
 ## Quick Start
 
-### 1. Generate Nameplates
+### 1. Add Names
 
 Edit `names.txt` and add names (one per line):
 ```
 Hadi Jaffri
 Hussein Naqi
-Ali Ahmed
-Sara Khan
 ```
 
-Run the generator:
+### 2. Generate Nameplates
+
 ```bash
-source venv/bin/activate && python generate_all_nameplates.py
+source venv/bin/activate && python generate_bambu_3mf.py
 ```
 
-This creates one combined STL file per nameplate in `output/`.
+This creates one 3MF file per nameplate in `output/` with colors already assigned!
 
-### 2. Bulk Import into Bambu Studio
+### 3. Import and Print
 
 1. **Open Bambu Studio**
+2. **Drag the `*.3mf` files** from `output/` onto the build plate
+3. **Slice and print!**
 
-2. **Bulk import all nameplates:**
-   - Select ALL `*.stl` files from `output/` folder
-   - Drag them onto the build plate at once
-
-3. **Apply multi-color (choose one method):**
-
-   **Method A: Group and apply modifier (if supported):**
-   - Select all imported objects (Ctrl+A / Cmd+A)
-   - Right-click → **Group** (if available)
-   - Right-click group → **Add Modifier** → **Height Range**
-   - Range 1: 0mm to 2.5mm → Light Blue
-   - Range 2: 2.5mm to 10mm → Black
-
-   **Method B: Copy settings from one object:**
-   - Set up height range modifier on first nameplate
-   - Right-click → **Copy**
-   - Select all other nameplates → Right-click → **Paste**
-
-   **Method C: Apply individually:**
-   - For each nameplate, add height range modifier manually
-   - Range 1: 0mm to 2.5mm → Light Blue
-   - Range 2: 2.5mm to 10mm → Black
-
-4. **Slice and print!**
+**That's it!** Colors are automatically assigned:
+- Base → Extruder 1 (your first color)
+- Text → Extruder 2 (your second color)
 
 ---
 
 ## How It Works
 
-- **Each STL file:** Complete nameplate (base + text combined)
-- **Base:** 0mm to 2.5mm height → Light Blue
-- **Text:** 2.5mm to 3.7mm height → Black
-- **Height Range Modifier:** Assigns different colors at different Z heights
-- **Automatic sizing:** Each nameplate width adjusts to fit the name
+- Each 3MF file contains separate objects for base and text
+- Base is assigned to Extruder 1, text to Extruder 2
+- Nameplate width automatically adjusts to fit each name
+- No manual color setup needed in Bambu Studio
 
 ---
 
@@ -74,39 +53,19 @@ This creates one combined STL file per nameplate in `output/`.
 
 ## Customization
 
-Want to change sizes or fonts? Edit `generate_all_nameplates.py`:
+Edit `generate_bambu_3mf.py` to change dimensions:
 
 ```python
-class NameplateGenerator:
-    def __init__(self):
-        self.base_height = 22        # Plate height in mm
-        self.base_thickness = 2.5    # Base depth
-        self.text_height = 1.2       # Text raise height
-        self.font_size = 10          # Font size
-        self.margin = 8              # Space around text
+self.base_height = 22        # Plate height in mm
+self.base_thickness = 2.5    # Base depth
+self.text_height = 1.2       # Text raise height
+self.font_size = 10          # Font size
+self.margin = 8              # Space around text
 ```
 
 Then regenerate:
 ```bash
-source venv/bin/activate && python generate_all_nameplates.py
-```
-
----
-
-## Troubleshooting
-
-**No "Height Range" modifier option?**
-- Try updating Bambu Studio to the latest version
-- Alternative: Print in single color, or manually paint regions
-
-**OpenSCAD not found?**
-- Install with: `brew install --cask openscad`
-- Or download from: https://openscad.org/
-
-**Want to regenerate everything?**
-```bash
-rm -rf output/
-source venv/bin/activate && python generate_all_nameplates.py
+source venv/bin/activate && python generate_bambu_3mf.py
 ```
 
 ---
@@ -117,4 +76,19 @@ source venv/bin/activate && python generate_all_nameplates.py
 - **Infill:** 15-20%
 - **Supports:** None needed
 - **Brim:** Optional (helps adhesion)
-- **Filament changes:** Automatic at 2.5mm layer height (with height range modifier)
+- **Filament changes:** Automatic between base and text layers
+
+---
+
+## Troubleshooting
+
+**OpenSCAD not found?**
+```bash
+brew install --cask openscad
+```
+
+**Want to regenerate everything?**
+```bash
+rm -rf output/*.3mf
+source venv/bin/activate && python generate_bambu_3mf.py
+```
