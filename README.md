@@ -4,35 +4,44 @@ Generate 3D printable chest badge nameplates for any list of names!
 
 ## Quick Start - Batch Workflow
 
-### 🚀 One-Time Setup (1 minute):
+### 🚀 One-Time Setup (2 minutes):
 
-1. **Open Bambu Studio**
+1. **Open Bambu Studio** and load two filament slots:
+   - **Slot 1:** Light Blue
+   - **Slot 2:** Black
 
 2. **Import any nameplate:**
    - Drag `output/stl/hadi_jaffri.stl` (the combined file) onto the build plate
+   - Assign it to **Filament Slot 1** (Light Blue)
 
-3. **Add filament change at layer height:**
-   - Right-click the object → **Change Filament**
-   - In the dialog, enter layer: **13** (this is 2.5mm ÷ 0.2mm layer height)
-   - Or if using 0.16mm layers, use layer **16**
-   - Click OK
+3. **Slice the object:**
+   - Click **Slice Plate** button
 
-4. **Assign colors:**
-   - Set **Filament 1** (bottom layers) to **Light Blue**
-   - Set **Filament 2** (top layers) to **Black**
-   - Check the preview - should show blue base, black text
+4. **Add filament change in preview:**
+   - Look at the **layer slider** on the right side of the preview
+   - Move the slider to **layer 13** (2.5mm height with 0.2mm layers)
+   - **Click the "+" button** next to the layer slider at layer 13
+   - Select **Change Filament** → Choose **Slot 2** (Black)
+   - The preview should now show blue base + black text
 
-5. **Save as preset:**
-   - Right-click the object → **Save settings as preset**
-   - Name it: `Nameplate-MultiColor`
+5. **Save as project:**
+   - File → **Save Project As** → Name it: `nameplate_template.3mf`
+   - This saves the filament change setting
 
-### ⚡ For Each Additional Nameplate (5 seconds):
+### ⚡ For Each Additional Nameplate:
 
-1. **Bulk import:** Select and drag all `*.stl` files from `output/stl/` onto build plate
-2. **Apply preset:** Select all objects → Right-click → **Load settings preset** → `Nameplate-MultiColor`
-3. **Done!** All nameplates now have colors set
+**Option A - One at a time (most reliable):**
+1. Delete the current object from the plate
+2. Import new nameplate STL
+3. File → Open Project → `nameplate_template.3mf` to copy settings
+4. Replace the object and slice
 
-**Time for 20 nameplates: ~2 minutes total** (1 min setup + 5 sec × 20 nameplates, or bulk import all at once)
+**Option B - Manual setup (if batch):**
+1. Import all nameplates at once
+2. Slice the plate
+3. For each object, manually add filament change at layer 13
+
+**Note:** Bambu Studio doesn't support copying filament change settings between objects via presets, so each nameplate needs the layer change added individually after slicing.
 
 ### ➕ Generate nameplates for new names:
 
