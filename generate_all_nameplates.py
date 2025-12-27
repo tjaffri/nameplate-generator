@@ -6,10 +6,6 @@ Generates properly sized nameplates - colors assigned manually in slicer
 
 import os
 import subprocess
-import json
-import zipfile
-import shutil
-import uuid
 from pathlib import Path
 
 
@@ -28,12 +24,10 @@ class NameplateGenerator:
 
         # Output directories
         self.output_dir = "output"
-        self.final_dir = os.path.join(self.output_dir, "final")
-        self.stl_dir = os.path.join(self.output_dir, "stl")
-        self.scad_dir = os.path.join(self.output_dir, "scad")
+        self.stl_dir = self.output_dir
+        self.scad_dir = os.path.join(self.output_dir, "temp_scad")
 
         # Create directories if they don't exist
-        os.makedirs(self.final_dir, exist_ok=True)
         os.makedirs(self.stl_dir, exist_ok=True)
         os.makedirs(self.scad_dir, exist_ok=True)
 
@@ -171,26 +165,6 @@ translate([0, 0, plate_thickness])
             print(f"  Error rendering {scad_file}: {e}")
             return False
 
-    def create_3mf(self, base_stl, text_stl, output_3mf, name):
-        """Create a simple 3MF file with merged geometry (colors assigned manually in slicer)"""
-        try:
-            import trimesh
-
-            print(f"    Creating 3MF (experimental)...")
-            # Load and merge both STL files
-            base_trimesh = trimesh.load(base_stl)
-            text_trimesh = trimesh.load(text_stl)
-            combined = trimesh.util.concatenate([base_trimesh, text_trimesh])
-
-            # Export directly to 3MF
-            # Note: Colors not embedded - assign manually in Bambu Studio
-            combined.export(output_3mf, file_type='3mf')
-
-            return True
-        except Exception as e:
-            print(f"  Warning: Could not create 3MF: {e}")
-            return False
-
     def generate_nameplate(self, name):
         """Generate complete nameplate for a single name"""
         # Clean name for filename
@@ -207,54 +181,27 @@ translate([0, 0, plate_thickness])
         print(f"  Plate width: {plate_width}mm")
         print(f"  Plate height: {self.base_height}mm")
 
-        # Generate SCAD files in scad directory (temporary)
-        print(f"  Generating OpenSCAD files...")
-        scad_base = os.path.join(self.scad_dir, f"{safe_name}_base.scad")
-        scad_text = os.path.join(self.scad_dir, f"{safe_name}_text.scad")
-        scad_combined = os.path.join(self.scad_dir, f"{safe_name}.scad")
+        # Generate SCAD file in temp directory
+        print(f"  Generating OpenSCAD file...")
+        scad_file = os.path.join(self.scad_dir, f"{safe_name}.scad")
+        self.generate_scad_file(name, scad_file)
 
-        self.generate_scad_base_only(name, scad_base)
-        self.generate_scad_text_only(name, scad_text)
-        self.generate_scad_file(name, scad_combined)
+        # Render to STL
+        print(f"  Rendering STL...")
+        stl_file = os.path.join(self.stl_dir, f"{safe_name}.stl")
+        success = self.render_stl(scad_file, stl_file)
 
-        # Render to STL in stl directory
-        print(f"  Rendering STL files...")
-        stl_base = os.path.join(self.stl_dir, f"{safe_name}_base.stl")
-        stl_text = os.path.join(self.stl_dir, f"{safe_name}_text.stl")
-        stl_combined = os.path.join(self.stl_dir, f"{safe_name}.stl")
-
-        success_base = self.render_stl(scad_base, stl_base)
-        success_text = self.render_stl(scad_text, stl_text)
-        success_combined = self.render_stl(scad_combined, stl_combined)
-
-        # Generate 3MF in final directory (optional/experimental)
-        threemf_file = os.path.join(self.final_dir, f"{safe_name}.3mf")
-        success_3mf = False
-        if success_base and success_text:
-            success_3mf = self.create_3mf(stl_base, stl_text, threemf_file, name)
-
-        # Report results
-        if success_base and success_text:
-            print(f"  ✓ STL Base: output/stl/{safe_name}_base.stl (assign Light Blue)")
-            print(f"  ✓ STL Text: output/stl/{safe_name}_text.stl (assign Black)")
-        if success_combined:
-            print(f"  ✓ STL Combined: output/stl/{safe_name}.stl")
-        if success_3mf:
-            print(f"  ✓ 3MF (experimental): output/final/{safe_name}.3mf")
-
-        # Clean up temporary SCAD files (keep only the combined one)
-        for f in [scad_base, scad_text]:
-            if os.path.exists(f):
-                os.remove(f)
+        # Report result
+        if success:
+            print(f"  ✓ {safe_name}.stl")
+        else:
+            print(f"  ✗ Failed to generate {safe_name}.stl")
 
         return {
             'name': name,
-            'base_stl': stl_base if success_base else None,
-            'text_stl': stl_text if success_text else None,
-            'combined_stl': stl_combined if success_combined else None,
-            'threemf': threemf_file if success_3mf else None,
-            'scad': scad_combined,
-            'width': plate_width
+            'stl': stl_file if success else None,
+            'width': plate_width,
+            'success': success
         }
 
     def generate_batch(self, names):
@@ -273,32 +220,27 @@ translate([0, 0, plate_thickness])
         print(f"\n{'='*60}")
         print(f"GENERATION COMPLETE")
         print(f"{'='*60}")
-        print(f"\nGenerated {len(results)} nameplate(s):")
-        for r in results:
+
+        successful = [r for r in results if r['success']]
+        failed = [r for r in results if not r['success']]
+
+        print(f"\n✓ Successfully generated {len(successful)} nameplate(s):")
+        for r in successful:
             print(f"  • {r['name']} ({r['width']}mm width)")
 
-        print(f"\n{'='*60}")
-        print(f"FILE ORGANIZATION")
-        print(f"{'='*60}")
-        print(f"\n📁 output/")
-        print(f"  ├── final/        ← 3MF files (READY TO PRINT)")
-        print(f"  ├── stl/          ← Individual STL parts")
-        print(f"  └── scad/         ← OpenSCAD source files")
+        if failed:
+            print(f"\n✗ Failed to generate {len(failed)} nameplate(s):")
+            for r in failed:
+                print(f"  • {r['name']}")
 
         print(f"\n{'='*60}")
-        print(f"HOW TO USE IN BAMBU STUDIO")
+        print(f"FILES READY")
         print(f"{'='*60}")
+        print(f"\n📁 output/ contains all your nameplate STL files")
+        print(f"   Bulk import them into Bambu Studio!")
 
-        print(f"\n🎯 RECOMMENDED: Use the 3MF files")
-        print(f"  1. Go to output/final/")
-        print(f"  2. Import the .3mf file for your nameplate")
-        print(f"  3. Colors are pre-assigned (Light Blue base + Black text)")
-        print(f"  4. Slice and print!")
-
-        print(f"\nAlternative: Use separate STL files from output/stl/")
-        print(f"  1. Import *_base.stl → Set to LIGHT BLUE")
-        print(f"  2. Import *_text.stl → Set to BLACK")
-        print(f"  3. They should align automatically")
+        print(f"\n📖 See README.md for instructions on bulk importing")
+        print(f"   and setting up height range modifier in Bambu Studio")
 
         return results
 
