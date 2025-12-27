@@ -328,40 +328,27 @@ translate([0, 0, plate_thickness])
         print(f"  Plate width: {plate_width}mm")
         print(f"  Plate height: {self.base_height}mm")
 
-        # Generate SCAD files in temp directory
-        print(f"  Generating OpenSCAD files...")
-        scad_base = os.path.join(self.scad_dir, f"{safe_name}_base.scad")
-        scad_text = os.path.join(self.scad_dir, f"{safe_name}_text.scad")
+        # Generate combined SCAD file
+        print(f"  Generating OpenSCAD file...")
+        scad_file = os.path.join(self.scad_dir, f"{safe_name}.scad")
+        self.generate_scad_file(name, scad_file)
 
-        self.generate_scad_base_only(name, scad_base)
-        self.generate_scad_text_only(name, scad_text)
-
-        # Render to STL in temp directory
-        print(f"  Rendering STL files...")
-        stl_base = os.path.join(self.scad_dir, f"{safe_name}_base.stl")
-        stl_text = os.path.join(self.scad_dir, f"{safe_name}_text.stl")
-
-        success_base = self.render_stl(scad_base, stl_base)
-        success_text = self.render_stl(scad_text, stl_text)
-
-        # Create 3MF with separate objects
-        threemf_file = os.path.join(self.stl_dir, f"{safe_name}.3mf")
-        success_3mf = False
-        if success_base and success_text:
-            print(f"  Creating 3MF...")
-            success_3mf = self.create_3mf_with_separate_objects(stl_base, stl_text, threemf_file, name)
+        # Render to STL
+        print(f"  Rendering STL...")
+        stl_file = os.path.join(self.stl_dir, f"{safe_name}.stl")
+        success = self.render_stl(scad_file, stl_file)
 
         # Report result
-        if success_3mf:
-            print(f"  ✓ {safe_name}.3mf (base + text as separate objects)")
+        if success:
+            print(f"  ✓ {safe_name}.stl")
         else:
-            print(f"  ✗ Failed to generate 3MF for {safe_name}")
+            print(f"  ✗ Failed to generate {safe_name}.stl")
 
         return {
             'name': name,
-            'threemf': threemf_file if success_3mf else None,
+            'stl': stl_file if success else None,
             'width': plate_width,
-            'success': success_3mf
+            'success': success
         }
 
     def generate_batch(self, names):

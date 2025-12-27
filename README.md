@@ -19,46 +19,52 @@ Run the generator:
 source venv/bin/activate && python generate_all_nameplates.py
 ```
 
-This creates one `.3mf` file per nameplate in `output/`.
-Each file contains TWO separate objects: base (Light Blue) and text (Black).
+This creates one combined STL file per nameplate in `output/`.
 
 ### 2. Bulk Import into Bambu Studio
 
 1. **Open Bambu Studio**
 
 2. **Bulk import all nameplates:**
-   - Select ALL `*.3mf` files from `output/` folder
+   - Select ALL `*.stl` files from `output/` folder
    - Drag them onto the build plate at once
-   - Each nameplate appears as TWO objects: "Name - Base" and "Name - Text"
 
-3. **Assign colors to all bases:**
-   - In the object list, select all "*- Base" objects
-   - (Hold Ctrl/Cmd and click each base, or use Shift-click)
-   - In the right panel, assign **Light Blue** filament
+3. **Apply multi-color (choose one method):**
 
-4. **Assign colors to all text:**
-   - In the object list, select all "*- Text" objects
-   - In the right panel, assign **Black** filament
+   **Method A: Group and apply modifier (if supported):**
+   - Select all imported objects (Ctrl+A / Cmd+A)
+   - Right-click → **Group** (if available)
+   - Right-click group → **Add Modifier** → **Height Range**
+   - Range 1: 0mm to 2.5mm → Light Blue
+   - Range 2: 2.5mm to 10mm → Black
 
-5. **Slice and print!**
-   - Text is automatically positioned on top of bases
-   - Printer will change filament at layer transition
+   **Method B: Copy settings from one object:**
+   - Set up height range modifier on first nameplate
+   - Right-click → **Copy**
+   - Select all other nameplates → Right-click → **Paste**
+
+   **Method C: Apply individually:**
+   - For each nameplate, add height range modifier manually
+   - Range 1: 0mm to 2.5mm → Light Blue
+   - Range 2: 2.5mm to 10mm → Black
+
+4. **Slice and print!**
 
 ---
 
 ## How It Works
 
-- **Each 3MF file:** Contains base + text as separate objects
-- **Base object:** Flat plate 2.5mm thick → Light Blue
-- **Text object:** Raised letters 1.2mm tall → Black
-- **Automatic positioning:** Text sits on top of base at Z=2.5mm
+- **Each STL file:** Complete nameplate (base + text combined)
+- **Base:** 0mm to 2.5mm height → Light Blue
+- **Text:** 2.5mm to 3.7mm height → Black
+- **Height Range Modifier:** Assigns different colors at different Z heights
 - **Automatic sizing:** Each nameplate width adjusts to fit the name
 
 ---
 
 ## Specifications
 
-- **Height:** 22mm total (2.5mm base + space for text)
+- **Height:** 22mm total (2.5mm base + raised text)
 - **Width:** Auto-calculated per name
 - **Base thickness:** 2.5mm
 - **Text height:** 1.2mm raised above base
@@ -89,13 +95,9 @@ source venv/bin/activate && python generate_all_nameplates.py
 
 ## Troubleshooting
 
-**Can't see separate objects in Bambu Studio?**
-- Look for two items per nameplate in the object list (right panel)
-- One named "Name - Base" and one named "Name - Text"
-
-**Objects not aligned?**
-- They should be automatically aligned
-- If not, select both → right-click → **Align** → **Center XY**
+**No "Height Range" modifier option?**
+- Try updating Bambu Studio to the latest version
+- Alternative: Print in single color, or manually paint regions
 
 **OpenSCAD not found?**
 - Install with: `brew install --cask openscad`
@@ -115,4 +117,4 @@ source venv/bin/activate && python generate_all_nameplates.py
 - **Infill:** 15-20%
 - **Supports:** None needed
 - **Brim:** Optional (helps adhesion)
-- **Filament changes:** Automatic at 2.5mm layer height
+- **Filament changes:** Automatic at 2.5mm layer height (with height range modifier)
