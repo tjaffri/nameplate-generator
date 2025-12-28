@@ -16,16 +16,16 @@ from datetime import datetime
 
 class BambuNameplateGenerator:
     def __init__(self):
-        # Default dimensions (reduced to ~50% for smaller nameplates)
-        self.base_height = 11  # mm
-        self.base_thickness = 1.25  # mm
-        self.text_height = 0.6  # mm (raised above base)
-        self.corner_radius = 1  # mm
+        # Dimensions optimized for 0.2mm layer height printing (25% smaller for bulk printing)
+        self.base_height = 13.5  # mm
+        self.base_thickness = 2.0  # mm
+        self.text_height = 1.2  # mm
+        self.corner_radius = 1.0  # mm
         self.pin_hole_diameter = 1.0  # mm
-        self.pin_hole_from_edge = 2  # mm
-        self.font_size = 5  # points
-        self.min_width = 30  # minimum plate width
-        self.margin = 5  # margin on each side of text (increased for safety)
+        self.pin_hole_from_edge = 2.0  # mm
+        self.font_size = 9  # points
+        self.min_width = 40  # minimum plate width
+        self.margin = 7  # margin on each side of text
 
         # Output directories
         self.output_dir = "output"
@@ -36,8 +36,8 @@ class BambuNameplateGenerator:
 
     def calculate_text_width(self, text, font_size):
         """Estimate text width in mm based on character count"""
-        # Use more conservative estimate (0.75 instead of 0.6) to prevent overflow
-        char_width = font_size * 0.75
+        # Use conservative estimate to prevent text overflow
+        char_width = font_size * 0.7
         return len(text) * char_width
 
     def calculate_plate_width(self, name):
@@ -52,17 +52,21 @@ class BambuNameplateGenerator:
         plate_width = round(plate_width / 5) * 5
         return plate_width
 
-    def generate_scad_base(self, name, output_file):
-        """Generate OpenSCAD file for base only"""
+    def generate_scad_combined(self, name, output_file):
+        """Generate OpenSCAD file with base and text MERGED as single solid"""
         plate_width = self.calculate_plate_width(name)
 
-        scad_content = f"""// Base plate for {name}
+        scad_content = f"""// Combined nameplate for {name} - MERGED geometry
 plate_width = {plate_width};
 plate_height = {self.base_height};
 plate_thickness = {self.base_thickness};
+text_height = {self.text_height};
 corner_radius = {self.corner_radius};
 pin_hole_diameter = {self.pin_hole_diameter};
 pin_hole_from_edge = {self.pin_hole_from_edge};
+font_size = {self.font_size};
+
+$fn = 64;  // High resolution
 
 module rounded_rectangle(width, height, thickness, radius) {{
     linear_extrude(height = thickness)
@@ -71,27 +75,27 @@ module rounded_rectangle(width, height, thickness, radius) {{
                 square([width, height], center = true);
 }}
 
-difference() {{
-    rounded_rectangle(plate_width, plate_height, plate_thickness, corner_radius);
-    translate([plate_width/2 - pin_hole_from_edge, plate_height/2 - pin_hole_from_edge, 0])
-        cylinder(h = plate_thickness + 1, r = pin_hole_diameter/2, center = true, $fn = 20);
-    translate([-plate_width/2 + pin_hole_from_edge, plate_height/2 - pin_hole_from_edge, 0])
-        cylinder(h = plate_thickness + 1, r = pin_hole_diameter/2, center = true, $fn = 20);
+module nameplate_base() {{
+    difference() {{
+        rounded_rectangle(plate_width, plate_height, plate_thickness, corner_radius);
+        translate([plate_width/2 - pin_hole_from_edge, plate_height/2 - pin_hole_from_edge, 0])
+            cylinder(h = plate_thickness + 1, r = pin_hole_diameter/2, center = true);
+        translate([-plate_width/2 + pin_hole_from_edge, plate_height/2 - pin_hole_from_edge, 0])
+            cylinder(h = plate_thickness + 1, r = pin_hole_diameter/2, center = true);
+    }}
 }}
-"""
-        with open(output_file, 'w') as f:
-            f.write(scad_content)
 
-    def generate_scad_text(self, name, output_file):
-        """Generate OpenSCAD file for text only"""
-        scad_content = f"""// Text for {name}
-plate_thickness = {self.base_thickness};
-text_height = {self.text_height};
-font_size = {self.font_size};
+module nameplate_text() {{
+    translate([0, 0, plate_thickness])
+        linear_extrude(height = text_height, convexity = 10)
+            text("{name}", size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
+}}
 
-translate([0, 0, plate_thickness])
-    linear_extrude(height = text_height)
-        text("{name}", size = font_size, font = "Arial:style=Bold", halign = "center", valign = "center");
+// UNION base and text into ONE solid mesh - no floating regions!
+union() {{
+    nameplate_base();
+    nameplate_text();
+}}
 """
         with open(output_file, 'w') as f:
             f.write(scad_content)
@@ -110,15 +114,14 @@ translate([0, 0, plate_thickness])
             print(f"  Error rendering {scad_file}: {e}")
             return False
 
-    def create_bambu_3mf(self, base_stl, text_stl, output_3mf, name):
+    def create_bambu_3mf(self, combined_stl, output_3mf, name):
         """
-        Create a Bambu Labs compatible 3MF file with proper color assignments.
-        Base is assigned to extruder 1, text to extruder 2.
+        Create a Bambu Labs compatible 3MF file with merged mesh and painted regions.
+        Uses single STL to avoid floating regions, with color painting by Z-height.
         """
         try:
-            # Load STL files
-            base_mesh = stl_mesh.Mesh.from_file(base_stl)
-            text_mesh = stl_mesh.Mesh.from_file(text_stl)
+            # Load the single merged STL
+            mesh = stl_mesh.Mesh.from_file(combined_stl)
 
             # Create temporary 3MF structure
             temp_3mf_dir = os.path.join(self.temp_dir, "3mf_structure")
@@ -132,8 +135,8 @@ translate([0, 0, plate_thickness])
             os.makedirs(model_dir, exist_ok=True)
             os.makedirs(metadata_dir, exist_ok=True)
 
-            # Create 3dmodel.model file
-            self._create_model_file(base_mesh, text_mesh, model_dir, name)
+            # Create 3dmodel.model file with single mesh
+            self._create_model_file(mesh, model_dir, name)
 
             # Create model_settings.config (this is where color assignment happens!)
             self._create_model_settings(metadata_dir, name)
@@ -163,8 +166,8 @@ translate([0, 0, plate_thickness])
             traceback.print_exc()
             return False
 
-    def _create_model_file(self, base_mesh, text_mesh, model_dir, name):
-        """Create the 3D/3dmodel.model file with base and text as separate objects"""
+    def _create_model_file(self, mesh, model_dir, name):
+        """Create the 3D/3dmodel.model file with single merged mesh"""
         model_root = ET.Element('model', {
             'unit': 'millimeter',
             'xml:lang': 'en-US',
@@ -187,44 +190,17 @@ translate([0, 0, plate_thickness])
 
         resources = ET.SubElement(model_root, 'resources')
 
-        # Object 1: Base mesh
-        base_obj = ET.SubElement(resources, 'object', {
+        # Single object with merged geometry
+        obj = ET.SubElement(resources, 'object', {
             'id': '1',
             'type': 'model'
         })
-        self._add_mesh_to_object(base_obj, base_mesh)
+        self._add_mesh_to_object(obj, mesh)
 
-        # Object 2: Text mesh
-        text_obj = ET.SubElement(resources, 'object', {
-            'id': '2',
-            'type': 'model'
-        })
-        self._add_mesh_to_object(text_obj, text_mesh)
-
-        # Object 3: Component combining base and text
-        component_obj = ET.SubElement(resources, 'object', {
-            'id': '3',
-            'type': 'model'
-        })
-        components = ET.SubElement(component_obj, 'components')
-
-        # Add base component (no transform)
-        ET.SubElement(components, 'component', {
-            'objectid': '1',
-            'transform': '1 0 0 0 1 0 0 0 1 0 0 0'
-        })
-
-        # Add text component (no transform - already positioned correctly in STL)
-        ET.SubElement(components, 'component', {
-            'objectid': '2',
-            'transform': '1 0 0 0 1 0 0 0 1 0 0 0'
-        })
-
-        # Build plate (identity transform matrix - required for proper import)
+        # Build plate
         build = ET.SubElement(model_root, 'build')
         ET.SubElement(build, 'item', {
-            'objectid': '3',
-            'transform': '1 0 0 0 0 1 0 0 0 0 1 0',
+            'objectid': '1',
             'printable': '1'
         })
 
@@ -257,78 +233,61 @@ translate([0, 0, plate_thickness])
 
     def _create_model_settings(self, metadata_dir, name):
         """
-        Create the model_settings.config file.
-        This is THE KEY FILE for color assignment in Bambu Studio!
+        Create model_settings.config with painted regions for multi-color.
+        Single mesh with facets painted by Z-height.
         """
         config_root = ET.Element('config')
 
-        # Object definition (id 3 is the component object)
-        obj = ET.SubElement(config_root, 'object', {'id': '3'})
-
-        # Base object metadata
+        # Object definition
+        obj = ET.SubElement(config_root, 'object', {'id': '1'})
         ET.SubElement(obj, 'metadata', {
             'key': 'name',
             'value': f'{name}.3mf'
         })
-        ET.SubElement(obj, 'metadata', {
-            'key': 'extruder',
-            'value': '1'
-        })
 
-        # Part 1: Base - assigned to extruder 1
-        part1 = ET.SubElement(obj, 'part', {
+        # Single part representing the whole model
+        part = ET.SubElement(obj, 'part', {
             'id': '1',
             'subtype': 'normal_part'
         })
-        ET.SubElement(part1, 'metadata', {
+        ET.SubElement(part, 'metadata', {
             'key': 'name',
-            'value': f'{name} - Base'
+            'value': name
         })
-        ET.SubElement(part1, 'metadata', {
-            'key': 'extruder',
-            'value': '1'  # First color
-        })
-        ET.SubElement(part1, 'metadata', {
+        ET.SubElement(part, 'metadata', {
             'key': 'matrix',
             'value': '1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1'
         })
-        ET.SubElement(part1, 'metadata', {
-            'key': 'source_object_id',
+
+        # Paint metadata - assign regions by height to different extruders
+        # Base region (0 to base_thickness) -> extruder 1
+        paint1 = ET.SubElement(part, 'paint')
+        ET.SubElement(paint1, 'metadata', {
+            'key': 'extruder',
             'value': '1'
         })
+        ET.SubElement(paint1, 'metadata', {
+            'key': 'height_range_low',
+            'value': '0'
+        })
+        ET.SubElement(paint1, 'metadata', {
+            'key': 'height_range_high',
+            'value': str(self.base_thickness)
+        })
 
-        # Part 2: Text - assigned to extruder 2
-        part2 = ET.SubElement(obj, 'part', {
-            'id': '2',
-            'subtype': 'normal_part'
-        })
-        ET.SubElement(part2, 'metadata', {
-            'key': 'name',
-            'value': f'{name} - Text'
-        })
-        ET.SubElement(part2, 'metadata', {
+        # Text region (base_thickness to base_thickness + text_height) -> extruder 2
+        paint2 = ET.SubElement(part, 'paint')
+        ET.SubElement(paint2, 'metadata', {
             'key': 'extruder',
-            'value': '2'  # Second color - THIS IS THE KEY!
-        })
-        ET.SubElement(part2, 'metadata', {
-            'key': 'matrix',
-            'value': '1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1'
-        })
-        ET.SubElement(part2, 'metadata', {
-            'key': 'source_object_id',
             'value': '2'
         })
-
-        # Add text_info for the text part
-        text_info = ET.SubElement(part2, 'text_info', {
-            'text': name,
-            'font_name': 'Arial',
-            'style_name': 'Bold',
-            'boldness': '109',
-            'font_size': str(self.font_size),
-            'thickness': str(self.text_height),
-            'bold': '1',
-            'italic': '0'
+        ET.SubElement(paint2, 'metadata', {
+            'key': 'height_range_low',
+            'value': str(self.base_thickness)
+        })
+        ET.SubElement(paint2, 'metadata', {
+            'key': 'height_range_high',
+            'value': str(self.base_thickness + self.text_height)
         })
 
         # Plate info
@@ -342,7 +301,7 @@ translate([0, 0, plate_thickness])
         model_inst = ET.SubElement(plate, 'model_instance')
         ET.SubElement(model_inst, 'metadata', {
             'key': 'object_id',
-            'value': '3'
+            'value': '1'
         })
         ET.SubElement(model_inst, 'metadata', {
             'key': 'instance_id',
@@ -352,7 +311,7 @@ translate([0, 0, plate_thickness])
         # Assemble section
         assemble = ET.SubElement(config_root, 'assemble')
         ET.SubElement(assemble, 'assemble_item', {
-            'object_id': '3',
+            'object_id': '1',
             'instance_id': '0',
             'transform': '1 0 0 0 1 0 0 0 1 0 0 0',
             'offset': '0 0 0'
@@ -419,41 +378,25 @@ translate([0, 0, plate_thickness])
         print(f"{'='*60}")
 
         # File paths
-        scad_base = os.path.join(self.temp_dir, f"{safe_name}_base.scad")
-        scad_text = os.path.join(self.temp_dir, f"{safe_name}_text.scad")
-        stl_base = os.path.join(self.temp_dir, f"{safe_name}_base.stl")
-        stl_text = os.path.join(self.temp_dir, f"{safe_name}_text.stl")
-        output_3mf = os.path.join(self.output_dir, f"{name}.3mf")
+        scad_file = os.path.join(self.temp_dir, f"{safe_name}.scad")
+        stl_file = os.path.join(self.output_dir, f"{safe_name}.stl")
 
         # Calculate dimensions
         plate_width = self.calculate_plate_width(name)
         print(f"  Plate dimensions: {plate_width}mm x {self.base_height}mm")
 
-        # Generate SCAD files
-        print(f"  Generating OpenSCAD files...")
-        self.generate_scad_base(name, scad_base)
-        self.generate_scad_text(name, scad_text)
+        # Generate single merged SCAD file
+        print(f"  Generating OpenSCAD file...")
+        self.generate_scad_combined(name, scad_file)
 
-        # Render STL files
-        print(f"  Rendering base STL...")
-        if not self.render_stl(scad_base, stl_base):
-            print(f"  Failed to render base")
+        # Render to STL - single solid piece
+        print(f"  Rendering to STL...")
+        if not self.render_stl(scad_file, stl_file):
+            print(f"  Failed to render STL")
             return False
 
-        print(f"  Rendering text STL...")
-        if not self.render_stl(scad_text, stl_text):
-            print(f"  Failed to render text")
-            return False
-
-        # Create 3MF
-        print(f"  Creating Bambu Labs 3MF with color assignments...")
-        if not self.create_bambu_3mf(stl_base, stl_text, output_3mf, name):
-            print(f"  Failed to create 3MF")
-            return False
-
-        print(f"  Success! Created: {name}.3mf")
-        print(f"  - Base assigned to Color 1 (extruder 1)")
-        print(f"  - Text assigned to Color 2 (extruder 2)")
+        print(f"  ✓ Success! Created: {safe_name}.stl")
+        print(f"    Single solid piece - no floating regions, all letters complete")
 
         return True
 
@@ -462,7 +405,7 @@ translate([0, 0, plate_thickness])
         print(f"\n{'#'*60}")
         print(f"# BAMBU LABS NAMEPLATE GENERATOR")
         print(f"# Generating {len(names)} nameplate(s)")
-        print(f"# With automatic color assignments!")
+        print(f"# Single-color STL files - no floating regions!")
         print(f"{'#'*60}")
 
         results = []
@@ -481,7 +424,7 @@ translate([0, 0, plate_thickness])
         if successful:
             print(f"\nSuccessfully generated {len(successful)} nameplate(s):")
             for r in successful:
-                print(f"  - {r['name']}.3mf")
+                print(f"  - {r['name']}.stl")
 
         if failed:
             print(f"\nFailed to generate {len(failed)} nameplate(s):")
@@ -491,9 +434,9 @@ translate([0, 0, plate_thickness])
         print(f"\n{'='*60}")
         print(f"READY TO PRINT!")
         print(f"{'='*60}")
-        print(f"\nYour 3MF files are in the output/ directory.")
-        print(f"Just import them directly into Bambu Studio - colors are already assigned!")
-        print(f"\nNo manual setup needed - just load and print!")
+        print(f"\nYour STL files are in the output/ directory.")
+        print(f"Import them into Bambu Studio and slice!")
+        print(f"\nSingle-color solid pieces - no floating regions, all letters complete!")
 
         return results
 

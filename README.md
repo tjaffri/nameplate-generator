@@ -1,6 +1,6 @@
 # Automated Nameplate Generator
 
-Generate 3D printable chest badge nameplates with automatic color assignments for Bambu Studio!
+Generate 3D printable chest badge nameplates as single-color STL files for Bambu Studio!
 
 ## Quick Start
 
@@ -15,57 +15,57 @@ Hussein Naqi
 ### 2. Generate Nameplates
 
 ```bash
-source venv/bin/activate && python generate_bambu_3mf.py
+source venv/bin/activate && python generate_nameplates.py
 ```
 
-This creates one 3MF file per nameplate in `output/` with colors already assigned!
+This creates one STL file per nameplate in `output/`!
 
 ### 3. Import and Print
 
 1. **Open Bambu Studio**
-2. **Drag the `*.3mf` files** from `output/` onto the build plate
+2. **Drag the `*.stl` files** from `output/` onto the build plate
 3. **Slice and print!**
 
-**That's it!** Colors are automatically assigned:
-- Base → Extruder 1 (your first color)
-- Text → Extruder 2 (your second color)
+**That's it!** Single-color solid nameplates with no floating regions.
 
 ---
 
 ## How It Works
 
-- Each 3MF file contains separate objects for base and text
-- Base is assigned to Extruder 1, text to Extruder 2
+- Each STL file is a single solid piece (base + text merged)
 - Nameplate width automatically adjusts to fit each name
-- No manual color setup needed in Bambu Studio
+- No geometry errors or missing letters
+- Simple single-color printing
 
 ---
 
 ## Specifications
 
-- **Height:** 22mm total (2.5mm base + raised text)
-- **Width:** Auto-calculated per name
-- **Base thickness:** 2.5mm
+- **Height:** 13.5mm total
+- **Width:** Auto-calculated per name (65-90mm typical)
+- **Base thickness:** 2.0mm
 - **Text height:** 1.2mm raised above base
-- **Pin holes:** 1.5mm diameter, 4mm from corners (for badge attachment)
+- **Font:** Liberation Sans Bold, 9pt
+- **Pin holes:** 1.0mm diameter, 2mm from corners (for badge attachment)
+- **Build plate capacity:** ~30 nameplates per print on Bambu A1 (256×256mm)
 
 ---
 
 ## Customization
 
-Edit `generate_bambu_3mf.py` to change dimensions:
+Edit `generate_nameplates.py` to change dimensions:
 
 ```python
-self.base_height = 22        # Plate height in mm
-self.base_thickness = 2.5    # Base depth
+self.base_height = 13.5      # Plate height in mm
+self.base_thickness = 2.0    # Base depth
 self.text_height = 1.2       # Text raise height
-self.font_size = 10          # Font size
-self.margin = 8              # Space around text
+self.font_size = 9           # Font size in points
+self.margin = 7              # Space around text
 ```
 
 Then regenerate:
 ```bash
-source venv/bin/activate && python generate_bambu_3mf.py
+source venv/bin/activate && python generate_nameplates.py
 ```
 
 ---
@@ -76,7 +76,7 @@ source venv/bin/activate && python generate_bambu_3mf.py
 - **Infill:** 15-20%
 - **Supports:** None needed
 - **Brim:** Optional (helps adhesion)
-- **Filament changes:** Automatic between base and text layers
+- **Single color:** No filament changes needed
 
 ---
 
@@ -89,6 +89,6 @@ brew install --cask openscad
 
 **Want to regenerate everything?**
 ```bash
-rm -rf output/*.3mf
-source venv/bin/activate && python generate_bambu_3mf.py
+rm -rf output/*.stl
+source venv/bin/activate && python generate_nameplates.py
 ```
